@@ -1,0 +1,55 @@
+# Datasets
+datasets/
+dataset/
+data/
+training_data/
+test_data/
+
+# Images / captured frames
+images/
+captures/
+frames/
+snapshots/
+received_frames/
+camera_frames/
+
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+# Audio datasets
+*.wav
+
+# Video
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.h264
+*.m3u8
+*.ts
+
+# Python environments/cache
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.key
+*.pem
+
+# Logs/temp
+*.log
+tmp/
+temp/

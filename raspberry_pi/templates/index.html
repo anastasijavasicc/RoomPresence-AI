@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Edge AI Room Monitor</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f5f7;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .connected {
+            color: green;
+            font-weight: bold;
+        }
+
+        .disconnected {
+            color: red;
+            font-weight: bold;
+        }
+
+        .event {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .person {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .person-yes {
+            color: red;
+        }
+
+        .person-no {
+            color: green;
+        }
+
+        .frames {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .frames img {
+            width: 240px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            image-rendering: pixelated;
+        }
+
+        .detection-image {
+            width: 100%;
+            max-width: 700px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .live-container {
+            position: relative;
+            width: 100%;
+            max-width: 850px;
+        }
+
+        .live-video {
+            width: 100%;
+            border-radius: 10px;
+            border: 3px solid #d00000;
+        }
+
+        .live-badge {
+            display: inline-block;
+            background: #d00000;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .waiting-live {
+            padding: 40px;
+            text-align: center;
+            background: #f5f5f5;
+            border-radius: 10px;
+            color: #666;
+        }
+
+        .video-status {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .recording {
+            color: red;
+        }
+
+        .not-recording {
+            color: green;
+        }
+
+        video {
+            width: 100%;
+            max-width: 850px;
+            border-radius: 10px;
+            margin-top: 10px;
+            background: black;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .stat {
+            font-size: 18px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <h1>Edge AI Room Monitor</h1>
+
+
+    <!-- ==================================================== -->
+    <!-- SYSTEM STATUS -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>System status</h2>
+
+        <p>
+            Arduino:
+            <span id="arduino">
+                Connecting...
+            </span>
+        </p>
+
+        <p>
+            State:
+            <strong id="state">
+                Starting
+            </strong>
+        </p>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- AUDIO -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Last TinyML audio event</h2>
+
+        <div
+            id="event"
+            class="event"
+        >
+            -
+        </div>
+
+        <p>
+            Confidence:
+            <span id="audio-confidence">
+                0%
+            </span>
+        </p>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- ARDUINO CAMERA -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Arduino OV7675 frames</h2>
+
+        <div
+            id="frames"
+            class="frames"
+        >
+            Waiting for event...
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- INITIAL PERSON DETECTION -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>LiteRT person detection</h2>
+
+        <div
+            id="person"
+            class="person"
+        >
+            Waiting...
+        </div>
+
+        <p>
+            Initial confidence:
+            <span id="person-confidence">
+                -
+            </span>
+        </p>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- INITIAL HIGH RESOLUTION IMAGE -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Initial high-resolution detection</h2>
+
+        <div id="detection-container">
+
+            Waiting for confirmed event...
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- LIVE EDGE AI -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Live Edge AI camera</h2>
+
+        <div id="live-status-container">
+
+            <div class="waiting-live">
+                Waiting for person detection...
+            </div>
+
+        </div>
+
+        <div class="stats-row">
+
+            <div class="stat">
+                Persons currently detected:
+                <strong id="persons-detected">
+                    0
+                </strong>
+            </div>
+
+            <div class="stat">
+                Session time:
+                <strong id="live-elapsed">
+                    0.0 s
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- RECORDING -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Edge AI recording</h2>
+
+        <p>
+            Recording:
+            <span
+                id="video-recording"
+                class="video-status not-recording"
+            >
+                NO
+            </span>
+        </p>
+
+        <p>
+            The processed video contains
+            the live LiteRT person detections
+            and bounding boxes.
+        </p>
+
+    </div>
+
+
+    <!-- ==================================================== -->
+    <!-- LAST RECORDING -->
+    <!-- ==================================================== -->
+
+    <div class="card">
+
+        <h2>Last event recording</h2>
+
+        <div id="last-video-container">
+
+            No recording available yet.
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+
+// ============================================================
+// SAVED VALUES
+// ============================================================
+
+let lastFrames = [];
+
+let lastDetectionImage = null;
+
+let lastVideo = null;
+
+let liveImageCreated = false;
+
+
+// ============================================================
+// UPDATE DASHBOARD
+// ============================================================
+
+async function updateStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/status"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        // ====================================================
+        // ARDUINO
+        // ====================================================
+
+        const arduino =
+            document.getElementById(
+                "arduino"
+            );
+
+
+        if (
+            data.arduino_connected
+        ) {
+
+            arduino.textContent =
+                "CONNECTED";
+
+            arduino.className =
+                "connected";
+
+        }
+
+        else {
+
+            arduino.textContent =
+                "DISCONNECTED";
+
+            arduino.className =
+                "disconnected";
+
+        }
+
+
+        // ====================================================
+        // STATE
+        // ====================================================
+
+        document.getElementById(
+            "state"
+        ).textContent =
+            data.state;
+
+
+        // ====================================================
+        // AUDIO
+        // ====================================================
+
+        document.getElementById(
+            "event"
+        ).textContent =
+            data.audio_event;
+
+
+        document.getElementById(
+            "audio-confidence"
+        ).textContent =
+            (
+                data.audio_confidence
+                * 100
+            ).toFixed(1)
+            + "%";
+
+
+        // ====================================================
+        // ARDUINO FRAMES
+        // ====================================================
+
+        const framesDiv =
+            document.getElementById(
+                "frames"
+            );
+
+
+        if (
+            data.frames &&
+            JSON.stringify(
+                data.frames
+            )
+            !==
+            JSON.stringify(
+                lastFrames
+            )
+        ) {
+
+            lastFrames =
+                [...data.frames];
+
+
+            framesDiv.innerHTML =
+                "";
+
+
+            for (
+                const frame
+                of data.frames
+            ) {
+
+                const img =
+                    document.createElement(
+                        "img"
+                    );
+
+
+                img.src =
+                    frame;
+
+
+                framesDiv.appendChild(
+                    img
+                );
+
+            }
+
+        }
+
+
+        // ====================================================
+        // INITIAL PERSON RESULT
+        // ====================================================
+
+        const person =
+            document.getElementById(
+                "person"
+            );
+
+
+        if (
+            data.person_detected
+            === true
+        ) {
+
+            person.textContent =
+                "PERSON DETECTED";
+
+            person.className =
+                "person person-yes";
+
+
+            document.getElementById(
+                "person-confidence"
+            ).textContent =
+                (
+                    data.person_confidence
+                    * 100
+                ).toFixed(1)
+                + "%";
+
+        }
+
+        else if (
+            data.person_detected
+            === false
+        ) {
+
+            person.textContent =
+                "NO PERSON";
+
+            person.className =
+                "person person-no";
+
+
+            document.getElementById(
+                "person-confidence"
+            ).textContent =
+                "-";
+
+        }
+
+        else {
+
+            person.textContent =
+                "Waiting...";
+
+            person.className =
+                "person";
+
+
+            document.getElementById(
+                "person-confidence"
+            ).textContent =
+                "-";
+
+        }
+
+
+        // ====================================================
+        // INITIAL DETECTION IMAGE
+        // ====================================================
+
+        const detectionContainer =
+            document.getElementById(
+                "detection-container"
+            );
+
+
+        if (
+            data.detection_image &&
+            data.detection_image
+            !==
+            lastDetectionImage
+        ) {
+
+            lastDetectionImage =
+                data.detection_image;
+
+
+            detectionContainer.innerHTML =
+                "";
+
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+
+            img.src =
+                data.detection_image;
+
+
+            img.className =
+                "detection-image";
+
+
+            detectionContainer.appendChild(
+                img
+            );
+
+        }
+
+
+        // ====================================================
+        // LIVE EDGE AI
+        // ====================================================
+
+        const liveContainer =
+            document.getElementById(
+                "live-status-container"
+            );
+
+
+        if (
+            data.live_session_active
+        ) {
+
+            if (
+                !liveImageCreated
+            ) {
+
+                liveContainer.innerHTML =
+                    "";
+
+
+                const badge =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                badge.className =
+                    "live-badge";
+
+                badge.textContent =
+                    "● LIVE EDGE AI";
+
+
+                const wrapper =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                wrapper.className =
+                    "live-container";
+
+
+                const liveImage =
+                    document.createElement(
+                        "img"
+                    );
+
+
+                // MJPEG stream sa Raspberry-ja.
+                liveImage.src =
+                    "/live";
+
+                liveImage.className =
+                    "live-video";
+
+
+                wrapper.appendChild(
+                    liveImage
+                );
+
+
+                liveContainer.appendChild(
+                    badge
+                );
+
+                liveContainer.appendChild(
+                    wrapper
+                );
+
+
+                liveImageCreated =
+                    true;
+
+            }
+
+        }
+
+        else {
+
+            if (
+                liveImageCreated
+            ) {
+
+                liveContainer.innerHTML =
+                    `
+                    <div class="waiting-live">
+                        Live session finished.
+                        Waiting for next event...
+                    </div>
+                    `;
+
+
+                liveImageCreated =
+                    false;
+
+            }
+
+        }
+
+
+        // ====================================================
+        // PERSON COUNT
+        // ====================================================
+
+        document.getElementById(
+            "persons-detected"
+        ).textContent =
+            data.persons_detected;
+
+
+        // ====================================================
+        // SESSION TIMER
+        // ====================================================
+
+        document.getElementById(
+            "live-elapsed"
+        ).textContent =
+            Number(
+                data.live_elapsed
+            ).toFixed(1)
+            + " s";
+
+
+        // ====================================================
+        // RECORDING STATUS
+        // ====================================================
+
+        const recording =
+            document.getElementById(
+                "video-recording"
+            );
+
+
+        if (
+            data.video_recording
+        ) {
+
+            recording.textContent =
+                "YES - RECORDING";
+
+            recording.className =
+                "video-status recording";
+
+        }
+
+        else {
+
+            recording.textContent =
+                "NO";
+
+            recording.className =
+                "video-status not-recording";
+
+        }
+
+
+        // ====================================================
+        // LAST VIDEO
+        // ====================================================
+
+        if (
+            data.last_video &&
+            data.last_video
+            !==
+            lastVideo
+        ) {
+
+            lastVideo =
+                data.last_video;
+
+
+            const videoContainer =
+                document.getElementById(
+                    "last-video-container"
+                );
+
+
+            videoContainer.innerHTML =
+                "";
+
+
+            const video =
+                document.createElement(
+                    "video"
+                );
+
+
+            video.controls =
+                true;
+
+
+            video.src =
+                data.last_video;
+
+
+            video.preload =
+                "metadata";
+
+
+            videoContainer.appendChild(
+                video
+            );
+
+        }
+
+    }
+
+    catch (
+        error
+    ) {
+
+        console.log(
+            "Dashboard update error:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// POLLING
+// ============================================================
+
+setInterval(
+    updateStatus,
+    1000
+);
+
+
+updateStatus();
+
+
+</script>
+
+
+</body>
+
+</html>
